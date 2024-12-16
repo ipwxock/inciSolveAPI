@@ -171,5 +171,4 @@ class UserController
 
         return response()->json(['message' => 'User deleted'], 204);
     }
-    
 }
