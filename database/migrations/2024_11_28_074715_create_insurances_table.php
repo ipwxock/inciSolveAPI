@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('insurances', function (Blueprint $table) {
             $table->id();
-            $table->enum('subject_type', ['Vida','Robo','Defunción','Accidente','Incendios','Asistencia_carretera','Salud','Hogar','Auto','Viaje','Mascotas','Otros']);
+            $table->enum('subject_type', ['Vida','Robo','Defunción','Accidente','Incendios','Asistencia_carretera','Salud','Hogar','Coche','Motocicleta','Viaje','Mascotas','Otros']);
             $table->text('description');
             $table->foreignId('customer_id')->nullable()->constrained('customers')->nullOnDelete();
             $table->foreignId('employee_id')->nullable()->constrained('employees')->nullOnDelete();

@@ -15,23 +15,18 @@ class UserController
      */
     public function index()
     {
-        return response()->json(User::all());
+        $users = User::with(['admin', 'manager', 'employee', 'customer'])->get();
+
+        // Ocultar la contraseña de cada usuario
+        $users->makeHidden(['password']);
+
+        return response()->json($users, 200);
     }
 
-    public function store(User $user)
+    public function store(Request $request)
     {
-        // Validar los datos generales de usuario
-        $validatedData = request()->validate([
-            'dni' => 'required|unique:users|max:9|regex:/^[0-9]{8}[A-Za-z]$/',
-            'first_name' => 'required|max:25|min:2',
-            'last_name' => 'required|max:25|min:2',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|min:8|max:25',
-            'role' => 'required|in:Admin,Manager,Empleado,Cliente',
-            'phone_number' => 'nullable|required_if:role,Cliente|regex:/^[0-9]{9}$/', // Para Cliente
-            'address' => 'nullable|required_if:role,Cliente|max:255', // Para Cliente
-            'company_id' => 'nullable|required_if:role,Empleado|exists:companies,id', // Para Empleado
-        ]);
+        // Validar todos los datos de entrada
+        $validatedData = $this->validateUserData($request);
 
         // Crear el usuario principal
         $user = User::create([
@@ -43,31 +38,12 @@ class UserController
             'role' => $validatedData['role'],
         ]);
 
-        // Crear la entidad relacionada según el rol
-        if ($validatedData['role'] === 'Empleado') {
-            Employee::create([
-                'auth_id' => $user->id, // Relación con User
-                'company_id' => $validatedData['company_id'], // Campo adicional
-            ]);
-        } elseif ($validatedData['role'] === 'Manager') {
-            Employee::create([
-                'auth_id' => $user->id, // Relación con User
-                'company_id' => $validatedData['company_id'], // Campo adicional
-            ]);
-        
-        } elseif ($validatedData['role'] === 'Cliente') {
-            Customer::create([
-                'auth_id' => $user->id, // Relación con User
-                'phone_number' => $validatedData['phone_number'], // Campo adicional
-                'address' => $validatedData['address'], // Campo adicional
-            ]);
-        }
+        // Crear la entidad específica según el rol
+        $this->createRelatedEntity($user, $validatedData);
 
+        // Ocultar campos sensibles como "password" antes de responder
         return response()->json(['user' => $user->makeHidden(['password'])], 201);
     }
-
-
-
 
 
     /**
@@ -90,8 +66,6 @@ class UserController
     
         return response()->json($user->makeHidden(['password']), 200);
     }
-
-
 
 
     
@@ -171,4 +145,45 @@ class UserController
 
         return response()->json(['message' => 'User deleted'], 204);
     }
+
+    private function createRelatedEntity(User $user, array $data)
+    {
+        switch ($data['role']) {
+            case 'Empleado':
+            case 'Manager':
+                $employee = Employee::create([
+                    'auth_id' => $user->id,
+                    'company_id' => $data['company_id'],
+                ]);
+                $user->employee()->associate($employee);
+                break;
+
+            case 'Cliente':
+                $customer = Customer::create([
+                    'auth_id' => $user->id,
+                    'phone_number' => $data['phone_number'],
+                    'address' => $data['address'],
+                ]);
+                $user->customer()->associate($customer);
+                break;
+        }
+    }
+
+    private function validateUserData(Request $request)
+    {
+        return $request->validate([
+            'dni' => 'required|unique:users|max:9|regex:/^[0-9]{8}[A-Za-z]$/',
+            'first_name' => 'required|max:25|min:2',
+            'last_name' => 'required|max:25|min:2',
+            'email' => 'required|email|unique:users',
+            'password' => 'required|min:8|max:25',
+            'role' => 'required|in:Admin,Manager,Empleado,Cliente',
+            'phone_number' => 'nullable|required_if:role,Cliente|regex:/^[0-9]{9}$/',
+            'address' => 'nullable|required_if:role,Cliente|max:255',
+            'company_id' => 'nullable|required_if:role,Empleado|exists:companies,id',
+        ]);
+    }
+
+
+    
 }

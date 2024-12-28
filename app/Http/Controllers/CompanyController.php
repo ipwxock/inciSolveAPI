@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -73,22 +74,29 @@ class CompanyController
     }
 
 
-    public function getAllMyEmployees(Company $company)
+    public function getAllMyEmployees(User $user)
     {
+        $employee = Employee::where('auth_id', $user->id)->first();
+        $company = Company::where('id', $employee->company_id)->first();
         // Verifica si la relación está cargada y si hay empleados.
         $employees = $company->employees;
 
         if ($employees->isEmpty()) {
-            return response()->json(['message' => 'No employees found for this company'], 404);
+            return response()->json(['message' => 'Esta empresa no tiene empleados.'], 404);
         }
 
-        // Usa whereIn para obtener los usuarios relacionados.
-        $users = User::whereIn('id', $employees->pluck('auth_id'))
-                    ->with('employees') // Si existe esta relación en el modelo User.
-                    ->get();
+        // Prepara un arreglo con los datos organizados como empleado y usuario.
+        $result = $employees->map(function ($employee) {
+            $user = User::find($employee->auth_id)->makeHidden(['password']);
+            return [
+                'employee' => $employee,
+                'user' => $user,
+            ];
+        });
 
-        // Devuelve la respuesta ocultando el campo de contraseña.
-        return response()->json($users->makeHidden(['password']), 200);
+        // Devuelve la respuesta JSON con los datos normalizados.
+        return response()->json($result, 200);
     }
+
 
 }

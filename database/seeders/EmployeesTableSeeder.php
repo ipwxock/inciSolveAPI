@@ -13,10 +13,19 @@ class EmployeesTableSeeder extends Seeder
     public function run(): void
     {
         DB::table('employees')->insert([
-            ['auth_id' => 2, 'company_id' => 1,'created_at' => now(),
+            ['auth_id' => 16, 'company_id' => 1,'created_at' => now(),
             'updated_at' => now(),],
-            ['auth_id' => 3, 'company_id' => 2,'created_at' => now(),
+            ['auth_id' => 17, 'company_id' => 2,'created_at' => now(),
             'updated_at' => now(),],
+            ['auth_id' => 18, 'company_id' => 3,'created_at' => now(),
+            'updated_at' => now(),],
+            ['auth_id' => 19, 'company_id' => 1,'created_at' => now(),
+            'updated_at' => now(),],
+            ['auth_id' => 20, 'company_id' => 2,'created_at' => now(),
+            'updated_at' => now(),],
+            ['auth_id' => 21, 'company_id' => 3,'created_at' => now(),
+            'updated_at' => now(),],
+
         ]);
     }
 }

@@ -15,8 +15,18 @@ class CustomerController
      */
     public function index()
     {
+        $customers = Customer::all();
 
-        return response()->json(Customer::all(), 200);
+        // Formatear la respuesta para incluir la relación con el usuario
+        $response = $customers->map(function ($customer) {
+            $user = User::find($customer->auth_id)->makeHidden(['password']);
+            return [
+                'customer' => $customer,
+                'user' => $user,
+            ];
+        });
+
+        return response()->json($response, 200);
     }
 
 
@@ -31,9 +41,7 @@ class CustomerController
             return response()->json(['message' => 'User not found'], 404);
         }
 
-        $user->customer = $customer;
-
-        return response()->json($user->makeHidden(['password']), 200);
+        return response()->json(['customer'=>$customer, 'user'=>$user->makeHidden(['password'])], 200);
 
     }
 
@@ -113,4 +121,25 @@ class CustomerController
 
         return response()->json($issues, 200);
     }
+
+    public function getAllMyCustomers(User $user)
+    {
+        // Obtener las pólizas (insurances) vendidas por el empleado
+        $insuranceCustomerIds = Insurance::where('employee_id', $user->id)->pluck('customer_id');
+
+        // Obtener los clientes (customers) asociados a esas pólizas
+        $customers = Customer::whereIn('id', $insuranceCustomerIds)->get();
+
+        // Formatear la respuesta para incluir la relación con el usuario
+        $response = $customers->map(function ($customer) {
+            $user = User::find($customer->auth_id)->makeHidden(['password']);
+            return [
+                'customer' => $customer,
+                'user' => $user,
+            ];
+        });
+
+        return response()->json($response, 200);
+    }
+
 }

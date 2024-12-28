@@ -85,11 +85,12 @@ class EmployeeController
     public function show(Employee $employee)
     {
 
-        $employee->user = User::find($employee->auth_id); 
+        $user = User::find($employee->auth_id)->makeHidden(['password']);
 
-        $employee->user->makeHidden(['password']);
-
-        return response()->json($employee, 200);
+        return response()->json([
+            'employee' => $employee,
+            'user' => $user,
+        ], 200);
     }
 
     /**
