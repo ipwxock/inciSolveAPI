@@ -73,6 +73,7 @@ class AuthController
             'access_token' => $token,
             'token_type' => 'Bearer',
             'role' => $user->role,
+            'username' => $user->first_name . ' ' . $user->last_name,
         ]);
     }
 
