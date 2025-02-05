@@ -79,12 +79,27 @@ class AuthController
 
     public function logout(Request $request)
     {
-        $request->user()->tokens()->delete();
-        return response()->json(['message' => 'Logged out']);
+        // Elimina los tokens de autenticación del usuario
+        $request->user()->tokens->each(function ($token) {
+            $token->delete();
+        });
+
+        // Opcionalmente: invalida la sesión del usuario si estás usando sesiones
+        // $request->session()->invalidate();
+
+        return response()->json(['message' => 'Logged out'], 200);
     }
+
 
     public function user(Request $request)
     {
         return $request->user();
+    }
+
+    protected function redirectTo($request)
+    {
+        if (!$request->expectsJson()) {
+            abort(401, 'No autenticado.');
+        }
     }
 }

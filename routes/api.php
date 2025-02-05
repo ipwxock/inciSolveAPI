@@ -8,16 +8,14 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\InsuranceController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\AuthController;
-use Illuminate\Http\Client\Request;
 
-Route::fallback(function (Request $request) {
+Route::fallback(function () {
     return response()->json([
         'message' => 'Ruta no encontrada',
         'success' => false,
         'error' => '404 Not Found',
     ], 404);
 });
-
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
@@ -49,8 +47,9 @@ Route::delete('/employees/{employee}', [EmployeeController::class, 'destroy']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/get-my-customers', [CustomerController::class, 'getAllMyCustomers']);
-    Route::get('/company/employees', [CompanyController::class, 'getAllMyEmployees']);
-    Route::get('/employees/insurances', [InsuranceController::class, 'getAllMyInsurances']);
+    Route::get('/get-my-employees', [EmployeeController::class, 'getAllMyEmployees']);
+    Route::get('/get-my-insurances', [InsuranceController::class, 'getAllMyInsurances']);
+    Route::get('/customers/{customer}/get-customer-detail', [CustomerController::class, 'getCustomerDetail'])->whereNumber('customer');
     Route::get('/employees/issues', [IssueController::class, 'getAllMyIssues']);
 });
 

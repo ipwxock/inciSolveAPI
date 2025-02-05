@@ -28,16 +28,17 @@ class UserController
         // Validar todos los datos de entrada
         $validatedData = $this->validateUserData($request);
 
+       
         // Crear el usuario principal
         $user = User::create([
             'dni' => $validatedData['dni'],
             'first_name' => $validatedData['first_name'],
             'last_name' => $validatedData['last_name'],
             'email' => $validatedData['email'],
-            'password' => bcrypt($validatedData['password']),
+            'password' => bcrypt($validatedData['dni']),
             'role' => $validatedData['role'],
         ]);
-
+        
         // Crear la entidad específica según el rol
         $this->createRelatedEntity($user, $validatedData);
 
@@ -148,25 +149,30 @@ class UserController
 
     private function createRelatedEntity(User $user, array $data)
     {
-        switch ($data['role']) {
-            case 'Empleado':
-            case 'Manager':
-                $employee = Employee::create([
-                    'auth_id' => $user->id,
-                    'company_id' => $data['company_id'],
-                ]);
-                $user->employee()->associate($employee);
-                break;
-
-            case 'Cliente':
-                $customer = Customer::create([
-                    'auth_id' => $user->id,
-                    'phone_number' => $data['phone_number'],
-                    'address' => $data['address'],
-                ]);
-                $user->customer()->associate($customer);
-                break;
+        try{
+            switch ($data['role']) {
+                case 'Empleado':
+                case 'Manager':
+                    $employee = Employee::create([
+                        'auth_id' => $user->id,
+                        'company_id' => $data['company_id'],
+                    ]);
+                    $user->employee()->associate($employee);
+                    break;
+    
+                case 'Cliente':
+                    $customer = Customer::create([
+                        'auth_id' => $user->id,
+                        'phone_number' => $data['phone_number'],
+                        'address' => $data['address'],
+                    ]);
+                    $user->customer()->associate($customer);
+                    break;
+            }
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
         }
+        
     }
 
     private function validateUserData(Request $request)
@@ -176,7 +182,7 @@ class UserController
             'first_name' => 'required|max:25|min:2',
             'last_name' => 'required|max:25|min:2',
             'email' => 'required|email|unique:users',
-            'password' => 'required|min:8|max:25',
+            // 'password' => 'required|min:8|max:25',
             'role' => 'required|in:Admin,Manager,Empleado,Cliente',
             'phone_number' => 'nullable|required_if:role,Cliente|regex:/^[0-9]{9}$/',
             'address' => 'nullable|required_if:role,Cliente|max:255',

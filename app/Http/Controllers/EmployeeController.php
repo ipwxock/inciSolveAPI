@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
 use App\Models\Employee;
 use App\Models\Insurance;
 use App\Models\Issue;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 use function PHPUnit\Framework\isEmpty;
@@ -173,6 +175,36 @@ class EmployeeController
 
 
 
+
+    public function getAllMyEmployees()
+    {
+        $user = Auth::user();
+
+        $employee = Employee::where('auth_id', $user->id)->first();
+        $company = Company::where('id', $employee->company_id)->first();
+        // Verifica si la relación está cargada y si hay empleados.
+        $employees = $company->employees;
+
+        if ($employees->isEmpty()) {
+            return response()->json(['message' => 'Esta empresa no tiene empleados.'], 404);
+        }
+
+        // Prepara un arreglo con los datos organizados como empleado y usuario.
+        $result = $employees->map(function ($employee) {
+            $user = User::find($employee->auth_id)->makeHidden(['password']);
+            return [
+                'employee' => $employee,
+                'user' => $user,
+            ];
+        });
+
+        // Devuelve la respuesta JSON con los datos normalizados.
+        return response()->json($result, 200);
+    }
+
+
+
+    
     public function composeEmployeeData(User $user, Employee $employee){
 
         if (!isEmpty($user) && !isEmpty($employee)){

@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Employee;
 use App\Models\Insurance;
 use App\Models\Issue;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class CustomerController
 {
@@ -122,10 +125,18 @@ class CustomerController
         return response()->json($issues, 200);
     }
 
-    public function getAllMyCustomers(User $user)
+    public function getAllMyCustomers()
     {
+        $employeeUser = Auth::user();
+
+        if (!$employeeUser) {
+            return response()->json(['message' => 'No estás autenticad@'], 401);
+        }
+
+        $employee = Employee::where('auth_id', $employeeUser->id)->first();
+
         // Obtener las pólizas (insurances) vendidas por el empleado
-        $insuranceCustomerIds = Insurance::where('employee_id', $user->id)->pluck('customer_id');
+        $insuranceCustomerIds = Insurance::where('employee_id', $employee->id)->pluck('customer_id');
 
         // Obtener los clientes (customers) asociados a esas pólizas
         $customers = Customer::whereIn('id', $insuranceCustomerIds)->get();
@@ -141,5 +152,39 @@ class CustomerController
 
         return response()->json($response, 200);
     }
+
+    public function getCustomerDetail(Customer $customer)
+{
+    $employeeUser = Auth::user();
+
+    if (!$employeeUser) {
+        return response()->json(['message' => 'No estás autenticad@'], 401);
+    }
+
+    // Obtener al empleado directamente usando la relación
+    $employee = $employeeUser->employee; // Asume que la relación está definida en el modelo User
+
+    if (!$employee) {
+        return response()->json(['message' => 'Empleado no encontrado'], 404);
+    }
+
+    // Usar relaciones para obtener los seguros del cliente asociados al empleado
+    $insurances = Insurance::where('employee_id', $employee->id)
+        ->where('customer_id', $customer->id)
+        ->get();
+
+    // Obtener las incidencias asociadas a esas pólizas
+    $issues = Issue::whereIn('insurance_id', $insurances->pluck('id'))->get();
+
+    // Formatear la respuesta
+    $response = [
+        'customer' => $customer,
+        'user' => $customer->user->makeHidden(['password']), // Asume que la relación `user` está en el modelo Customer
+        'insurances' => $insurances,
+        'issues' => $issues,
+    ];
+
+    return response()->json($response, 200);
+}
 
 }

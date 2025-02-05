@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Employee;
 use App\Models\Insurance;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class InsuranceController
 {
@@ -96,6 +98,57 @@ class InsuranceController
 
         return response()->json(null, 204);
     }
+
+
+    public function getAllMyInsurances()
+    {
+        $user = Auth::user();
+    
+        // Verificar si el usuario tiene permisos para acceder
+        if ($user->role === "Cliente") {
+            // Si es cliente, obtener su registro de cliente
+            $customer = Customer::where('auth_id', $user->id)->first();
+    
+            // Obtener todas las pólizas asociadas al cliente
+            $insurances = Insurance::where('customer_id', $customer->id)->get();
+        } elseif ($user->role === "Empleado" || $user->role === "Manager") {
+            // Si es empleado o manager, obtener su registro de empleado
+            $employee = Employee::where('auth_id', $user->id)->first();
+    
+            // Obtener todas las pólizas vendidas por el empleado
+            $insurances = Insurance::where('employee_id', $employee->id)->get();
+        } else {
+            // Si no tiene permisos, retornar error
+            return response()->json(['message' => 'No tienes permisos para ver esta información.'], 403);
+        }
+    
+        // Mapear las pólizas para incluir información adicional
+        $insurances = $insurances->map(function ($insurance) {
+            // Obtener los datos del cliente y empleado asociados a la póliza
+            $customer = Customer::find($insurance->customer_id);
+            $employee = Employee::find($insurance->employee_id);
+
+            $customerUser = User::find($customer->auth_id);
+            $employeeUser = User::find($employee->auth_id);
+    
+            // Devolver la póliza con los datos enriquecidos
+            return [
+                'insurance' => $insurance,
+                'customer' => [
+                    'customer' => $customer,
+                    'user' => $customerUser,
+                ],
+                'employee' => [
+                    'employee' => $employee,
+                    'user' => $employeeUser,
+                ]
+            ];
+        });
+    
+        // Retornar el resultado en formato JSON
+        return response()->json($insurances, 200);
+    }
+    
 
 
     private function validateUserData(Request $request)

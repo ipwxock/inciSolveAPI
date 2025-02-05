@@ -13,7 +13,6 @@ return new class extends Migration
             $table->foreignId('auth_id')->nullable()->constrained('users')->cascadeOnDelete();
             $table->string('phone_number', 15)->nullable();
             $table->text('address')->nullable();
-            $table->timestamps();
         });
     }
 

@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable; // Cambia Model a Authenticatable
 use Laravel\Sanctum\HasApiTokens;
 
@@ -23,14 +23,14 @@ class User extends Authenticatable // Extiende Authenticatable para cumplir con 
         'role',
     ];
 
-    public function customers(): HasMany
+    public function customer(): HasOne
     {
-        return $this->hasMany(Customer::class, 'auth_id');
+        return $this->hasOne(Customer::class, 'auth_id');
     }
 
-    public function employees(): HasMany
+    public function employee(): HasOne
     {
-        return $this->hasMany(Employee::class, 'auth_id');
+        return $this->hasOne(Employee::class, 'auth_id');
     }
 
     public $timestamps = true;

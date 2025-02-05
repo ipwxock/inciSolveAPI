@@ -74,29 +74,4 @@ class CompanyController
     }
 
 
-    public function getAllMyEmployees(User $user)
-    {
-        $employee = Employee::where('auth_id', $user->id)->first();
-        $company = Company::where('id', $employee->company_id)->first();
-        // Verifica si la relación está cargada y si hay empleados.
-        $employees = $company->employees;
-
-        if ($employees->isEmpty()) {
-            return response()->json(['message' => 'Esta empresa no tiene empleados.'], 404);
-        }
-
-        // Prepara un arreglo con los datos organizados como empleado y usuario.
-        $result = $employees->map(function ($employee) {
-            $user = User::find($employee->auth_id)->makeHidden(['password']);
-            return [
-                'employee' => $employee,
-                'user' => $user,
-            ];
-        });
-
-        // Devuelve la respuesta JSON con los datos normalizados.
-        return response()->json($result, 200);
-    }
-
-
 }

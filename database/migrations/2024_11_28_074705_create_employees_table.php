@@ -12,7 +12,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('auth_id')->nullable()->constrained('users')->cascadeOnDelete();
             $table->foreignId('company_id')->nullable()->constrained('companies')->nullOnDelete();
-            $table->timestamps();
         });
     }
 
