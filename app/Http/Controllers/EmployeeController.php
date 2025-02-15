@@ -203,8 +203,56 @@ class EmployeeController
     }
 
 
+    public function getAllMyCustomersIssues()
+    {
+        $user = Auth::user();
 
+        if (!$user) {
+            return response()->json(['message' => 'No autorizad@'], 403);
+        }
+
+        $employee = Employee::where('auth_id', $user->id)->first();
+
+        $insurances = Insurance::where('employee_id', $employee->id)->get();
+
+        $issues = collect();
+
+        foreach ($insurances as $insurance) {
+            $iss = Issue::where('insurance_id', $insurance->id)->get();
+            $issues = $issues->merge($iss);
+        }
+
+        return response()->json($issues, 200);
+    }
     
+    public function getEmployeeDetail(Employee $employee)
+    {
+        $user = User::find($employee->auth_id)->makeHidden(['password']);
+
+        if (!$user) {
+            return response()->json(['message' => 'No autorizad@'], 403);
+        }
+
+        $insurances = Insurance::where('employee_id', $employee->id)->get();
+
+        $issues = collect();
+
+        foreach ($insurances as $insurance) {
+            $iss = Issue::where('insurance_id', $insurance->id)->get();
+            $issues = $issues->merge($iss);
+        }
+
+        $response = [
+            'employee' => $employee,
+            'user' => $user,
+            'insurances' => $insurances,
+            'issues' => $issues,
+        ];
+        
+        return response()->json($response, 200);
+        
+    }
+
     public function composeEmployeeData(User $user, Employee $employee){
 
         if (!isEmpty($user) && !isEmpty($employee)){

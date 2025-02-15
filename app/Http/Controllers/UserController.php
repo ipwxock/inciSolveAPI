@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Models\Employee;
 use App\Models\Customer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class UserController
 {
@@ -28,7 +30,6 @@ class UserController
         // Validar todos los datos de entrada
         $validatedData = $this->validateUserData($request);
 
-       
         // Crear el usuario principal
         $user = User::create([
             'dni' => $validatedData['dni'],
@@ -81,16 +82,7 @@ class UserController
             return response()->json(['error' => 'User not found'], 404);
         }
 
-        $validatedData = $request->validate([
-            'dni' => 'unique:users|max:9|min:9|pattern:/[0-9]{8}[A-Za-z]{1}/',
-            'first_name' => 'max:25|min:2',
-            'last_name' => 'max:25|min:2',
-            'email' => 'email',
-            'role' => 'in:Admin,Manager,Empleado,Cliente',
-            'phone_number' => 'nullable|regex:/^[0-9]{9}$/', // Para Cliente
-            'address' => 'nullable|max:255', // Para Cliente
-            'company_id' => 'nullable|exists:companies,id', // Para Empleado/manager
-        ]);
+        $validatedData = $this->validateUserData($request, $userToEdit);
 
         if (!$validatedData) {
             return response()->json(['error' => 'Invalid data'], 400);
@@ -98,36 +90,8 @@ class UserController
 
         $userToEdit->update($validatedData);
 
-        if ($userToEdit->role === 'Empleado' || $userToEdit->role === 'Manager')
-        {
-            $employee = Employee::where('auth_id', $userToEdit->id)->first();
-            if (isset($validatedData['company_id'])) {
-                $employee->update([
-                    'company_id' => $validatedData['company_id'],
-                ]);
-            }
-            
-
-            $userToEdit->employee = $employee;
-
-        } elseif ($userToEdit->role === 'Cliente') {
-            $customer = Customer::where('auth_id', $userToEdit->id)->first();
-
-            if (isset($validatedData['phone_number'])){
-                $customer->update([
-                    'phone_number' => $validatedData['phone_number'],
-                ]);
-            }
-
-            if (isset($validatedData['address'])) {
-                $customer->update([
-                    'address' => $validatedData['address'],
-                ]);
-            }
-
-            $userToEdit->customer = $customer;
-        }
-
+        $this->updateRelatedEntity($userToEdit, $validatedData);
+        
         return response()->json($userToEdit->makeHidden(['password']), 200);
     }
 
@@ -149,13 +113,35 @@ class UserController
 
     private function createRelatedEntity(User $user, array $data)
     {
+        $creator = Auth::user();
+
+        if (!$creator || $creator->role === 'Cliente') {
+            return response()->json(['error' => 'Usted no está autorizado.'], 403);
+        }
+
         try{
             switch ($data['role']) {
                 case 'Empleado':
-                case 'Manager':
+                    $companyId = $creator->role === 'Admin' ? $data['company_id'] : $creator->employee->company_id;
+
+                    if (!$companyId) {
+                        return response()->json(['error' => 'No se ha especificado una compañía.'], 400);
+                    }
+
                     $employee = Employee::create([
                         'auth_id' => $user->id,
-                        'company_id' => $data['company_id'],
+                        'company_id' => $companyId,
+                    ]);
+                    $user->employee()->associate($employee);
+                    break;
+                case 'Manager':
+                    $companyId = $data['company_id'];
+                    if (!$companyId) {
+                        return response()->json(['error' => 'No se ha especificado una compañía.'], 400);
+                    }
+                    $employee = Employee::create([
+                        'auth_id' => $user->id,
+                        'company_id' => $companyId,
                     ]);
                     $user->employee()->associate($employee);
                     break;
@@ -172,24 +158,57 @@ class UserController
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 400);
         }
-        
     }
 
-    private function validateUserData(Request $request)
+    private function updateRelatedEntity(User $user, array $data)
     {
-        return $request->validate([
-            'dni' => 'required|unique:users|max:9|regex:/^[0-9]{8}[A-Za-z]$/',
-            'first_name' => 'required|max:25|min:2',
-            'last_name' => 'required|max:25|min:2',
-            'email' => 'required|email|unique:users',
-            // 'password' => 'required|min:8|max:25',
-            'role' => 'required|in:Admin,Manager,Empleado,Cliente',
-            'phone_number' => 'nullable|required_if:role,Cliente|regex:/^[0-9]{9}$/',
-            'address' => 'nullable|required_if:role,Cliente|max:255',
-            'company_id' => 'nullable|required_if:role,Empleado|exists:companies,id',
-        ]);
+        try{
+            switch ($data['role']) {
+                case 'Empleado':
+                case 'Manager':
+                    $employee = Employee::where('auth_id', $user->id)->first();
+                    $employee->update([
+                        'company_id' => $data['company_id'],
+                    ]);
+                    $user->employee()->associate($employee);
+                    break;
+    
+                case 'Cliente':
+                    $customer = Customer::where('auth_id', $user->id)->first();
+                    $customer->update([
+                        'phone_number' => $data['phone_number'],
+                        'address' => $data['address'],
+                    ]);
+                    $user->customer()->associate($customer);
+                    break;
+            }
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
+
     }
 
+    private function validateUserData(Request $request, User $user = null)
+{
+    return $request->validate([
+        'dni' => [
+            'max:9',
+            'min:9',
+            'regex:/^[0-9]{8}[A-Za-z]$/',
+            Rule::unique('users', 'dni')->ignore($user?->id),
+        ],
+        'first_name' => 'required|max:25|min:2',
+        'last_name' => 'required|max:25|min:2',
+        'email' => [
+            'email',
+            Rule::unique('users', 'email')->ignore($user?->id),
+        ],
+        'role' => 'required|in:Admin,Manager,Empleado,Cliente',
+        'phone_number' => 'nullable|required_if:role,Cliente|regex:/^[0-9]{9}$/',
+        'address' => 'nullable|required_if:role,Cliente|max:255',
+        'company_id' => 'nullable',
+    ]);
+}
 
-    
+
 }

@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('customers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('auth_id')->nullable()->constrained('users')->cascadeOnDelete();
-            $table->string('phone_number', 15)->nullable();
+            $table->string('phone_number', 9)->nullable();
             $table->text('address')->nullable();
         });
     }

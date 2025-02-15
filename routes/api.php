@@ -24,19 +24,22 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 //Users
-Route::get('/users', [UserController::class, 'index']);
-Route::post('/users', [UserController::class, 'store']);
-Route::get('/users/{user}', [UserController::class, 'show']);
-Route::put('/users/{user}', [UserController::class, 'update']);
-Route::delete('/users/{user}', [UserController::class, 'destroy']);
-
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/users', [UserController::class, 'index']);
+    Route::post('/users', [UserController::class, 'store']);
+    Route::get('/users/{user}', [UserController::class, 'show']);
+    Route::put('/users/{user}', [UserController::class, 'update']);
+    Route::delete('/users/{user}', [UserController::class, 'destroy']);
+});
 
 //Companies
 Route::get('/companies', [CompanyController::class, 'index']);
-Route::post('/companies', [CompanyController::class, 'store']);
-Route::get('/companies/{company}', [CompanyController::class, 'show']);
-Route::put('/companies/{company}', [CompanyController::class, 'update']);
-Route::delete('/companies/{company}', [CompanyController::class, 'destroy']);
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/companies', [CompanyController::class, 'store']);
+    Route::get('/companies/{company}', [CompanyController::class, 'show']);
+    Route::put('/companies/{company}', [CompanyController::class, 'update']);
+    Route::delete('/companies/{company}', [CompanyController::class, 'destroy']);
+});
 
 //Employees
 Route::get('/employees', [EmployeeController::class, 'index']);
@@ -50,7 +53,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/get-my-employees', [EmployeeController::class, 'getAllMyEmployees']);
     Route::get('/get-my-insurances', [InsuranceController::class, 'getAllMyInsurances']);
     Route::get('/customers/{customer}/get-customer-detail', [CustomerController::class, 'getCustomerDetail'])->whereNumber('customer');
-    Route::get('/employees/issues', [IssueController::class, 'getAllMyIssues']);
+    Route::get('/employees/{employee}/get-employee-detail', [EmployeeController::class, 'getEmployeeDetail'])->whereNumber('employee');
+    Route::get('/get-my-company-id', [CompanyController::class, 'getMyCompanyId']);
+    // Route::get('/employees/issues', [IssueController::class, 'getAllMyIssues']);
 });
 
 //Customers

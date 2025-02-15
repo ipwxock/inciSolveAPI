@@ -13,12 +13,25 @@ class CompaniesTableSeeder extends Seeder
     public function run(): void
     {
         DB::table('companies')->insert([
-            ['name' => 'Seguros Global', 'description' => 'Líder en seguros para todo tipo de necesidades','created_at' => now(),
-                'updated_at' => now(),],
-            ['name' => 'AseguraTuHogar', 'description' => 'Especialistas en seguros para el hogar y familia','created_at' => now(),
-                'updated_at' => now(),],
-            ['name' => 'Seguros de Vida', 'description' => 'Protección para toda la familia','created_at' => now(),
-                'updated_at' => now(),],
+            ['name' => 'Seguros Global',
+             'description' => 'Líder en seguros para todo tipo de necesidades',
+             'phone_number' => '123456789',
+             'created_at' => now(),
+            'updated_at' => now(),
+            ],
+
+            ['name' => 'AseguraTuHogar',
+             'description' => 'Especialistas en seguros para el hogar y familia',
+             'phone_number' => '456789123',
+             'created_at' => now(),
+            'updated_at' => now(),
+            ],
+            ['name' => 'Seguros de Vida',
+             'description' => 'Protección para toda la familia',
+             'phone_number' => '987234567',
+             'created_at' => now(),
+            'updated_at' => now(),
+            ],
         ]);
     }
 }

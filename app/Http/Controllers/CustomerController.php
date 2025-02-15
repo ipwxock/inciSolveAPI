@@ -18,6 +18,12 @@ class CustomerController
      */
     public function index()
     {
+        $user = Auth::user();
+
+        if (!$user || !$user->role=='Admin') {
+            return response()->json(['message' => 'No autorizado'], 403);
+        }
+
         $customers = Customer::all();
 
         // Formatear la respuesta para incluir la relación con el usuario
@@ -28,7 +34,7 @@ class CustomerController
                 'user' => $user,
             ];
         });
-
+ 
         return response()->json($response, 200);
     }
 
@@ -111,8 +117,16 @@ class CustomerController
     }
 
     
-    public function getAllMyIssues(Customer $customer)
+    public function getAllMyIssues()
     {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['message' => 'No autorizad@'], 403);
+        }
+
+        $customer = Customer::where('auth_id', $user->id)->first();
+
         $insurances = Insurance::where('customer_id', $customer->id)->get();
 
         $issues = collect();
@@ -130,7 +144,7 @@ class CustomerController
         $employeeUser = Auth::user();
 
         if (!$employeeUser) {
-            return response()->json(['message' => 'No estás autenticad@'], 401);
+            return response()->json(['message' => 'No estás autenticad@'], 403);
         }
 
         $employee = Employee::where('auth_id', $employeeUser->id)->first();
@@ -154,37 +168,46 @@ class CustomerController
     }
 
     public function getCustomerDetail(Customer $customer)
-{
-    $employeeUser = Auth::user();
+    {
+        $employeeUser = Auth::user();
 
-    if (!$employeeUser) {
-        return response()->json(['message' => 'No estás autenticad@'], 401);
+        if (!$employeeUser) {
+            return response()->json(['message' => 'No estás autorizad@'], 403);
+        }
+
+        // Obtener al empleado directamente usando la relación
+        $employee = $employeeUser->employee; // Asume que la relación está definida en el modelo User
+
+        if (!$employee) {
+            return response()->json(['message' => 'Empleado no encontrado'], 403);
+        }
+
+        // Comprobar que existe algun Insurance asociado al empleado y al cliente
+        $insuranceExists = Insurance::where('employee_id', $employee->id)
+            ->where('customer_id', $customer->id)
+            ->first();
+
+        if (!$insuranceExists) {
+            return response()->json(['message' => 'No tienes permiso. No es cliente tuyo.'], 403);
+        }
+
+        // Usar relaciones para obtener los seguros del cliente asociados al empleado
+        $insurances = Insurance::where('employee_id', $employee->id)
+            ->where('customer_id', $customer->id)
+            ->get();
+
+        // Obtener las incidencias asociadas a esas pólizas
+        $issues = Issue::whereIn('insurance_id', $insurances->pluck('id'))->get();
+
+        // Formatear la respuesta
+        $response = [
+            'customer' => $customer,
+            'user' => $customer->user->makeHidden(['password']), // Asume que la relación `user` está en el modelo Customer
+            'insurances' => $insurances,
+            'issues' => $issues,
+        ];
+
+        return response()->json($response, 200);
     }
-
-    // Obtener al empleado directamente usando la relación
-    $employee = $employeeUser->employee; // Asume que la relación está definida en el modelo User
-
-    if (!$employee) {
-        return response()->json(['message' => 'Empleado no encontrado'], 404);
-    }
-
-    // Usar relaciones para obtener los seguros del cliente asociados al empleado
-    $insurances = Insurance::where('employee_id', $employee->id)
-        ->where('customer_id', $customer->id)
-        ->get();
-
-    // Obtener las incidencias asociadas a esas pólizas
-    $issues = Issue::whereIn('insurance_id', $insurances->pluck('id'))->get();
-
-    // Formatear la respuesta
-    $response = [
-        'customer' => $customer,
-        'user' => $customer->user->makeHidden(['password']), // Asume que la relación `user` está en el modelo Customer
-        'insurances' => $insurances,
-        'issues' => $issues,
-    ];
-
-    return response()->json($response, 200);
-}
 
 }
