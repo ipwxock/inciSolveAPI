@@ -11,7 +11,7 @@ use \App\Models\Insurance;
 class IssueFactory extends Factory
 {
     /**
-     * Define the model's default state.
+     * Define el estado del modelo.
      *
      * @return array<string, mixed>
      */

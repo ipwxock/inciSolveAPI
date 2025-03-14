@@ -12,7 +12,9 @@ use App\Models\Issue;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
-
+/**
+ * Clase para poblar la base de datos con datos de ejemplo.
+ */
 class DatabaseSeeder extends Seeder
 {
     /**

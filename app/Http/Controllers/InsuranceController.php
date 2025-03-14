@@ -5,123 +5,50 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\Employee;
 use App\Models\Insurance;
+use App\Http\Policies\InsurancePolicy;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Controlador para la gestión de pólizas de seguros.
+ *
+ * Este controlador maneja todas las operaciones relacionadas con las pólizas de seguros, incluyendo:
+ * la creación, visualización, actualización, eliminación, y consulta de pólizas según el rol del usuario.
+ * Además, permite obtener pólizas específicas para el usuario o según sus permisos.
+ *
+ * Métodos:
+ * - index(): Muestra una lista de todas las pólizas disponibles (según permisos).
+ * - store(Request $request): Crea una nueva póliza en el sistema.
+ * - show($id): Muestra los detalles de una póliza específica.
+ * - update(Request $request, $id): Actualiza la información de una póliza existente.
+ * - destroy($id): Elimina una póliza existente.
+ * - getAllMyInsurances(): Obtiene todas las pólizas asociadas al usuario logueado.
+ * - getInsuranceDependingOnRole(User $user): Obtiene pólizas específicas basadas en el rol del usuario.
+ * - getInsuranceDetail($id): Obtiene detalles de una póliza específica, con permisos según el rol del usuario.
+ */
 class InsuranceController
 {
+
     /**
-     * Display a listing of the resource.
+     * Muestra todas las pólizas de seguro disponibles.
+     *
+     * @return \Illuminate\Http\JsonResponse
      */
     public function index()
     {
-        return response()->json(Insurance::all(), 200);
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        // Validación de datos iniciales
-        $validatedData = $request->validate([
-            'subject_type' => 'required|in:Vida,Robo,Defunción,Accidente,Incendios,Asistencia_carretera,Salud,Hogar,Auto,Viaje,Mascotas,Otros',
-            'description' => 'required|max:255|min:5',
-            'customer_id' => 'nullable|exists:customers,id',
-            'employee_id' => 'required|exists:employees,id',
-        ]);
-
-        // Verificar si existe el cliente (si se proporciona customer_id)
-        if (isset($validatedData['customer_id'])) {
-            $customer = Customer::find($validatedData['customer_id']);
-            if (!$customer) {
-                return response()->json(['message' => 'Customer not found'], 404);
-            }
-        } else {
-            // Crear un nuevo usuario si no existe customer_id
-            $userData = $this->validateUserData($request); // Método separado para validar usuario
-            $user = User::create($userData);
-
-            // Asociar el usuario a un nuevo cliente
-            $customer = Customer::create([
-                'auth_id' => $user->id,
-                'phone_number' => $request->phone_number,
-                'address' => $request->address,
-            ]);
-
-            $validatedData['customer_id'] = $customer->id;
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Usuario no autenticado'], 401);
         }
 
-        // Crear el seguro usando los datos validados
-        $insurance = Insurance::create($validatedData);
-
-        return response()->json($insurance, 201);
-    }
-
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(Insurance $insurance)
-    {
-        return response()->json($insurance, 200);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Insurance $insurance)
-    {
-        $validatedData = $request->validate([
-            'subject_type' => 'in:Vida,Robo,Defunción,Accidente,Incendios,Asistencia_carretera,Salud,Hogar,Auto,Viaje,Mascotas,Otros',
-            'description' => 'max:255|min:5',
-            'customer_id' => 'exists:customers,id',
-            'employee_id' => 'exists:employees,id',
-        ]);
-
-        if ($request->filled('subject_type') && $request->subject_type !== $insurance->subject_type) {
-            return response()->json(['message' => 'No se puede cambiar el tipo de póliza. Sólo las condiciones.'], 400);
-        }
-
-        $insurance->update($validatedData);
-
-        return response()->json($insurance, 200);
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Insurance $insurance)
-    {
-        $insurance->delete();
-
-        return response()->json(null, 204);
-    }
-
-
-    public function getAllMyInsurances()
-    {
         $user = Auth::user();
-    
-        // Verificar si el usuario tiene permisos para acceder
-        if ($user->role === "Cliente") {
-            // Si es cliente, obtener su registro de cliente
-            $customer = Customer::where('auth_id', $user->id)->first();
-    
-            // Obtener todas las pólizas asociadas al cliente
-            $insurances = Insurance::where('customer_id', $customer->id)->get();
-        } elseif ($user->role === "Empleado" || $user->role === "Manager") {
-            // Si es empleado o manager, obtener su registro de empleado
-            $employee = Employee::where('auth_id', $user->id)->first();
-    
-            // Obtener todas las pólizas vendidas por el empleado
-            $insurances = Insurance::where('employee_id', $employee->id)->get();
-        } else {
-            // Si no tiene permisos, retornar error
-            return response()->json(['message' => 'No tienes permisos para ver esta información.'], 403);
+
+        if (!InsurancePolicy::viewAll($user)) {
+            return response()->json(['message' => 'No autorizad@'], 403);
         }
-    
+
+        $insurances = Insurance::all();
+
         // Mapear las pólizas para incluir información adicional
         $insurances = $insurances->map(function ($insurance) {
             // Obtener los datos del cliente y empleado asociados a la póliza
@@ -130,7 +57,7 @@ class InsuranceController
 
             $customerUser = User::find($customer->auth_id);
             $employeeUser = User::find($employee->auth_id);
-    
+
             // Devolver la póliza con los datos enriquecidos
             return [
                 'insurance' => $insurance,
@@ -144,21 +71,259 @@ class InsuranceController
                 ]
             ];
         });
-    
+        return response()->json($insurances, 200);
+    }
+
+
+    /**
+     * Almacena una nueva póliza de seguro.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function store(Request $request)
+    {
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Usuario no autenticado'], 401);
+        }
+
+        $user = Auth::user();
+
+        if (!InsurancePolicy::create($user)) {
+            return response()->json(['message' => 'No autorizad@'], 403);
+        }
+
+        $rules = [
+            'subject_type' => 'required|in:Vida,Robo,Defunción,Accidente,Incendios,Asistencia_carretera,Moto,Coche,Salud,Hogar,Viaje,Mascotas,Otros',
+            'description' => 'required|max:255|min:5',
+            'customer_id' => 'required|exists:customers,id',
+        ];
+
+        // Si el usuario es empleado o manager, obtener `employee_id` automáticamente
+        if (in_array($user->role, ['Empleado', 'Manager'])) {
+            $employee = Employee::where('auth_id', $user->id)->first();
+
+            if (!$employee) {
+                return response()->json(['message' => 'No se encontró un registro de empleado para este usuario.'], 400);
+            }
+
+            $validatedData = $request->validate($rules);
+            $validatedData['employee_id'] = $employee->id;
+        } else {
+            // Para otros roles, `employee_id` debe venir en la request
+            $rules['employee_id'] = 'required|exists:employees,id';
+            $validatedData = $request->validate($rules);
+        }
+
+        // Crear y retornar la póliza
+        return response()->json(Insurance::create($validatedData), 201);
+    }
+
+    /**
+     * Muestra los detalles de una póliza de seguro específica.
+     *
+     * @param \App\Models\Insurance $insurance
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function show(Insurance $insurance)
+    {
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Usuario no autenticado'], 401);
+        }
+
+        $user = Auth::user();
+
+        if (!InsurancePolicy::view($user)) {
+            return response()->json(['message' => 'No autorizad@'], 403);
+        }
+
+        return response()->json($insurance, 200);
+    }
+
+    /**
+     * Actualiza los detalles de una póliza de seguro existente.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Models\Insurance $insurance
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function update(Request $request, Insurance $insurance)
+    {
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Usuario no autenticado'], 401);
+        }
+
+        $user = Auth::user();
+
+        if (!InsurancePolicy::update($user)) {
+            return response()->json(['message' => 'No autorizad@'], 403);
+        }
+
+        if ($user->role == 'Empleado' || $user->role == 'Manager') {
+            $employee = Employee::where('auth_id', $user->id)->first();
+
+            if ($employee->id !== $insurance->employee_id) {
+                return response()->json(['message' => 'No autorizado.'], 403);
+            }
+
+            $request->merge(['employee_id' => $employee->id]);
+        }
+
+        $validatedData = $request->validate([
+            'description' => 'max:255|min:5',
+        ]);
+
+        $employee = Employee::find($insurance->employee_id);
+
+        if(!$validatedData) {
+            return response()->json(['message' => 'Validación fallida'], 400);
+        }
+
+        $insurance->update($validatedData);
+
+        return response()->json($insurance, 200);
+    }
+
+    /**
+     * Elimina una póliza de seguro si no tiene incidencias asociadas.
+     *
+     * @param \App\Models\Insurance $insurance
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function destroy(Insurance $insurance)
+    {
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Usuario no autenticado'], 401);
+        }
+
+        $user = Auth::user();
+
+        if (!InsurancePolicy::view($user)) {
+            return response()->json(['message' => 'No autorizad@'], 403);
+        }
+
+        //Comprobar si tiene issues pendientes asociadas.
+        if ($insurance->issues->contains(fn($issue) => $issue->status !== 'Cerrada')) {
+            return response()->json(['message' => 'No se puede eliminar una póliza con incidencias abiertas o pendientes.'], 400);
+        }
+
+
+        if ($user->role === "Empleado" || $user->role === "Manager") {
+            // Permitir eliminar una póliza únicamente si la ha creado el empleado
+            $employee = Employee::where('auth_id', $user->id)->first();
+
+            if (!$employee) {
+                return response()->json(['message' => 'No se encontró un registro de empleado para este usuario.'], 400);
+            }
+
+            if ($insurance->employee_id !== $employee->id) {
+                return response()->json(['message' => 'No tienes permisos para eliminar esta póliza.'], 403);
+            }
+
+        }
+
+        $insurance->delete();
+
+        return response()->json(['message'=>'Póliza eliminada correctamente.'], 200);
+    }
+
+    /**
+     * Obtiene todas las pólizas de seguro asociadas al usuario autenticado.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getAllMyInsurances()
+    {
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Usuario no autenticado'], 401);
+        }
+
+        $user = Auth::user();
+
+        if (!InsurancePolicy::viewMyInsurances($user)) {
+            return response()->json(['message' => 'No autorizad@'], 403);
+        }
+
+        $insurances = $this->getInsuranceDependingOnRole($user)->get();
+
+        // Mapear las pólizas para incluir información adicional
+        $insurances = $insurances->map(function ($insurance) {
+            // Obtener los datos del cliente y empleado asociados a la póliza
+            $customer = Customer::find($insurance->customer_id);
+            $employee = Employee::find($insurance->employee_id);
+
+            $customerUser = User::find($customer->auth_id);
+            $employeeUser = User::find($employee->auth_id);
+
+            // Devolver la póliza con los datos enriquecidos
+            return [
+                'insurance' => $insurance,
+                'customer' => [
+                    'customer' => $customer,
+                    'user' => $customerUser,
+                ],
+                'employee' => [
+                    'employee' => $employee,
+                    'user' => $employeeUser,
+                ]
+            ];
+        });
+
         // Retornar el resultado en formato JSON
         return response()->json($insurances, 200);
     }
-    
 
-
-    private function validateUserData(Request $request)
+    /**
+     * Obtiene las pólizas de seguro asociadas al usuario, dependiendo de su rol (Cliente o Empleado).
+     *
+     * @param \App\Models\User $user El usuario autenticado.
+     * @return \Illuminate\Database\Eloquent\Builder La consulta para obtener las pólizas asociadas al usuario.
+     */
+    private function getInsuranceDependingOnRole(User $user)
     {
-        return $request->validate([
-            'first_name' => 'required|max:50',
-            'last_name' => 'required|max:50',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|min:8',
-        ]);
+        if ($user->role === "Cliente") {
+            $customer = Customer::where('auth_id', $user->id)->first();
+            return Insurance::where('customer_id', $customer->id);
+        }
+        $employee = Employee::where('auth_id', $user->id)->first();
+        return Insurance::where('employee_id', $employee->id);
+    }
 
+    /**
+     * Obtiene los detalles de una póliza de seguro específica.
+     *
+     * @param \App\Models\Insurance $insurance
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getInsuranceDetail(Insurance $insurance)
+    {
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Usuario no autenticado'], 401);
+        }
+
+        $user = Auth::user();
+
+        if (!InsurancePolicy::view($user)) {
+            return response()->json(['message' => 'No autorizad@'], 403);
+        }
+
+        $customer = Customer::find($insurance->customer_id);
+        $employee = Employee::find($insurance->employee_id);
+
+        $customerUser = User::find($customer->auth_id);
+        $employeeUser = User::find($employee->auth_id);
+
+        return response()->json([
+            'insurance' => $insurance,
+            'customer' => [
+                'customer' => $customer,
+                'user' => $customerUser,
+            ],
+            'employee' => [
+                'employee' => $employee,
+                'user' => $employeeUser,
+            ],
+            'issues' => $insurance->issues
+        ], 200);
     }
 }

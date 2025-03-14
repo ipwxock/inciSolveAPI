@@ -12,7 +12,7 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'login'],  // Agregar la ruta 'login' si es necesario
+    'paths' => ['api/*'],  // Agregar la ruta 'login' si es necesario
 
     'allowed_methods' => ['*'],  // Permite todos los métodos (GET, POST, etc.)
 

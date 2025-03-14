@@ -9,6 +9,11 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class UserFactory extends Factory
 {
+    /**
+     * Define el estado del modelo.
+     *
+     * @return array<string, mixed>
+     */
     public function definition()
     {
         return [
@@ -21,21 +26,41 @@ class UserFactory extends Factory
         ];
     }
 
+    /**
+     * Crea un usuario con el rol de cliente.
+     *
+     * @return \Illuminate\Database\Eloquent\Factories\Factory
+     */
     public function customer()
     {
         return $this->state(fn () => ['role' => 'Cliente']);
     }
 
+    /**
+     * Crea un usuario con el rol de empleado.
+     *
+     * @return \Illuminate\Database\Eloquent\Factories\Factory
+     */
     public function employee()
     {
         return $this->state(fn () => ['role' => 'Empleado']);
     }
 
+    /**
+     * Crea un usuario con el rol de administrador.
+     *
+     * @return \Illuminate\Database\Eloquent\Factories\Factory
+     */
     public function admin()
     {
         return $this->state(fn () => ['role' => 'Admin']);
     }
 
+    /**
+     * Crea un usuario con el rol de manager.
+     *
+     * @return \Illuminate\Database\Eloquent\Factories\Factory
+     */
     public function manager()
     {
         return $this->state(fn () => ['role' => 'Manager']);

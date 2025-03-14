@@ -6,6 +6,26 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
+
+/**
+ * Seeder para poblar la tabla `users` con datos de ejemplo.
+ *
+ * Este seeder inserta una lista de usuarios en la base de datos.
+ * Se pueden agregar más registros modificando el arreglo pasado al método `insert`.
+ *
+ * Los campos insertados son:
+ *
+ * - `dni`: Número de identificación del usuario.
+ * - `first_name`: Nombre del usuario.
+ * - `last_name`: Apellido del usuario.
+ * - `email`: Correo electrónico del usuario.
+ * - `password`: Contraseña del usuario.
+ * - `role`: Rol del usuario.
+ * - `created_at`: Fecha y hora de creación de la entrada.
+ * - `updated_at`: Fecha y hora de última actualización de la entrada.
+ *
+ * @return void
+ */
 class UsersTableSeeder extends Seeder
 {
     /**
@@ -15,42 +35,42 @@ class UsersTableSeeder extends Seeder
     {
         DB::table('users')->insert([
             [
-                'dni' => '12345678A', 
-                'first_name' => 'John', 
-                'last_name' => 'Doe', 
-                'email' => 'john.doe@example.com', 
-                'password' => Hash::make('password123'), 
+                'dni' => '12345678A',
+                'first_name' => 'John',
+                'last_name' => 'Doe',
+                'email' => 'john.doe@example.com',
+                'password' => Hash::make('password123'),
                 'role' => 'Cliente',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
 
             [
-                'dni' => '87654321B', 
-                'first_name' => 'Jane', 
-                'last_name' => 'Smith', 'email' => 'jane.smith@example.com', 
-                'password' => Hash::make('password123'), 
+                'dni' => '87654321B',
+                'first_name' => 'Jane',
+                'last_name' => 'Smith', 'email' => 'jane.smith@example.com',
+                'password' => Hash::make('password123'),
                 'role' => 'Cliente',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'dni' => '11223344C', 
-                'first_name' => 'Alice', 
-                'last_name' => 'Brown', 
-                'email' => 'alice.brown@example.com', 
-                'password' => Hash::make('password123'), 
+                'dni' => '11223344C',
+                'first_name' => 'Alice',
+                'last_name' => 'Brown',
+                'email' => 'alice.brown@example.com',
+                'password' => Hash::make('password123'),
                 'role' => 'Cliente',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
 
             [
-                'dni' => '44332211D', 
-                'first_name' => 'Bob', 
-                'last_name' => 'Johnson', 
-                'email' => 'bob.johnson@example.com', 
-                'password' => Hash::make('password123'), 
+                'dni' => '44332211D',
+                'first_name' => 'Bob',
+                'last_name' => 'Johnson',
+                'email' => 'bob.johnson@example.com',
+                'password' => Hash::make('password123'),
                 'role' => 'Cliente',
                 'created_at' => now(),
                 'updated_at' => now(),

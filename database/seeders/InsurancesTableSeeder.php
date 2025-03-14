@@ -5,6 +5,23 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Seeder para poblar la tabla `insurances` con datos de ejemplo.
+ *
+ * Este seeder inserta una lista de pólizas en la base de datos.
+ * Se pueden agregar más registros modificando el arreglo pasado al método `insert`.
+ *
+ * Los campos insertados son:
+ *
+ * - `subject_type`: Tipo de seguro.
+ * - `description`: Descripción de la póliza.
+ * - `customer_id`: ID del cliente asociado a la póliza.
+ * - `employee_id`: ID del empleado asociado a la póliza.
+ * - `created_at`: Fecha y hora de creación de la entrada.
+ * - `updated_at`: Fecha y hora de última actualización de la entrada.
+ *
+ * @return void
+ */
 class InsurancesTableSeeder extends Seeder
 {
     /**
@@ -78,7 +95,7 @@ class InsurancesTableSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'subject_type' => 'Motocicleta',
+                'subject_type' => 'Moto',
                 'description' => 'Protección completa para tu moto',
                 'customer_id' => 6,
                 'employee_id' => 4,

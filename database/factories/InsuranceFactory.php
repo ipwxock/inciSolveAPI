@@ -13,7 +13,7 @@ use \App\Models\Employee;
 class InsuranceFactory extends Factory
 {
     /**
-     * Define the model's default state.
+     * Define el estado del modelo.
      *
      * @return array<string, mixed>
      */

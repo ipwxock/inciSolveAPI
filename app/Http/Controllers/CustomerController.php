@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Employee;
+use App\Http\Policies\CustomerPolicy;
 use App\Models\Insurance;
 use App\Models\Issue;
 use Illuminate\Http\Request;
@@ -13,11 +14,24 @@ use Illuminate\Support\Facades\Auth;
 
 class CustomerController
 {
+
     /**
-     * Display a listing of the resource.
+     * Devuelve una lista de todos los clientes si el usuario está autenticado y autorizado.
+     *
+     * @return \Illuminate\Http\JsonResponse Lista de clientes con sus datos de usuario o un mensaje de error si no está autorizado.
      */
     public function index()
     {
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Usuario no autenticado'], 401);
+        }
+
+        $user = Auth::user();
+
+        if (!CustomerPolicy::viewAllCustomers($user)) {
+            return response()->json(['message' => 'No autorizad@'], 403);
+        }
+
         $customers = Customer::all();
 
         // Formatear la respuesta para incluir la relación con el usuario
@@ -29,108 +43,53 @@ class CustomerController
             ];
         });
 
-        return response()->json($response, 200);
+         return response()->json($response, 200);
+
     }
 
 
     /**
-     * Display the specified resource.
+     * Muestra los detalles de un cliente específico si el usuario tiene permisos adecuados.
+     *
+     * @param Customer $customer Cliente a mostrar.
+     * @return \Illuminate\Http\JsonResponse Detalles del cliente y su información de usuario o un mensaje de error si no está autorizado.
      */
     public function show(Customer $customer)
     {
-        $user = User::findOrFail($customer->auth_id);
-      
-        if (!$user) {
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Usuario no autenticado'], 401);
+        }
+
+        $user = Auth::user();
+
+        if (!CustomerPolicy::view($user)) {
+            return response()->json(['message' => 'No autorizad@'], 403);
+        }
+
+        $customerUser = User::findOrFail($customer->auth_id);
+
+        if (!$customerUser) {
             return response()->json(['message' => 'User not found'], 404);
         }
 
-        return response()->json(['customer'=>$customer, 'user'=>$user->makeHidden(['password'])], 200);
-
+        return response()->json(['customer'=>$customer, 'user'=>$customerUser->makeHidden(['password'])], 200);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Obtiene todos los clientes asociados a las pólizas vendidas por el empleado autenticado.
+     *
+     * @return \Illuminate\Http\JsonResponse Lista de clientes con sus datos de usuario o un mensaje de error si no está autorizado.
      */
-    public function update(Request $request, Customer $customer)
-    {
-        $validatedData = $request->validate([
-            'dni' => 'unique:users,dni,' . $customer->auth_id . '|max:9|min:9|regex:/[0-9]{8}[A-Za-z]{1}/',
-            'first_name' => 'max:25|min:2',
-            'last_name' => 'max:25|min:2',
-            'email' => 'email|unique:users,email,' . $customer->auth_id,
-            'address' => 'max:50|min:5',
-            'phone_number' => 'max:15|min:9|pattern:/[0-9]{9,15}/',
-        ]);
-    
-        if (!$validatedData) {
-            return response()->json("Datos no válidos.", 400);
-        }
-    
-        // Obtener el usuario relacionado
-        $user = User::find($customer->auth_id);
-    
-        // Actualizar customer si es necesario
-        if (isset($validatedData['address'])) {
-            $customer->address = $validatedData['address'];
-        }
-
-        if (isset($validatedData['phone_number'])) {
-            $customer->phone_number = $validatedData['phone_number'];    
-        }
-    
-        // Actualizar propiedades de User si existen en el request
-        $userFields = ['dni', 'first_name', 'last_name', 'email'];
-        foreach ($userFields as $field) {
-            if (isset($validatedData[$field])) {
-                $user->$field = $validatedData[$field];
-            }
-        }
-    
-        // Guardar los cambios
-        $user->save(); // Guardar cambios en la tabla users
-        $customer->save(); // Guardar cambios en la tabla employees
-    
-        return response()->json(['employee' => $customer], 200);
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Customer $customer)
-    {
-        $customer->delete();
-
-        return response()->json(['message' => 'Cliente eliminado correctamente.'], 200);
-    }
-
-    public function getAllMyInsurances(Customer $customer)
-    {
-        $insurances = Insurance::where('customer_id', $customer->id)->get();
-
-        return response()->json($insurances, 200);
-    }
-
-    
-    public function getAllMyIssues(Customer $customer)
-    {
-        $insurances = Insurance::where('customer_id', $customer->id)->get();
-
-        $issues = collect();
-
-        foreach ($insurances as $insurance) {
-            $iss = Issue::where('insurance_id', $insurance->id)->get();
-            $issues = $issues->merge($iss);
-        }
-
-        return response()->json($issues, 200);
-    }
-
     public function getAllMyCustomers()
     {
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Usuario no autenticado'], 401);
+        }
+
         $employeeUser = Auth::user();
 
-        if (!$employeeUser) {
-            return response()->json(['message' => 'No estás autenticad@'], 401);
+        if (!CustomerPolicy::viewMyCustomers($employeeUser)) {
+            return response()->json(['message' => 'No autorizad@'], 403);
         }
 
         $employee = Employee::where('auth_id', $employeeUser->id)->first();
@@ -149,42 +108,60 @@ class CustomerController
                 'user' => $user,
             ];
         });
-
         return response()->json($response, 200);
     }
 
+    /**
+     * Muestra los detalles completos de un cliente, incluyendo sus seguros e incidencias, si el usuario tiene permisos adecuados.
+     *
+     * @param Customer $customer Cliente a mostrar.
+     * @return \Illuminate\Http\JsonResponse Detalles del cliente, sus seguros e incidencias o un mensaje de error si no está autorizado.
+     */
     public function getCustomerDetail(Customer $customer)
-{
-    $employeeUser = Auth::user();
+    {
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Usuario no autenticado'], 401);
+        }
 
-    if (!$employeeUser) {
-        return response()->json(['message' => 'No estás autenticad@'], 401);
+        $employeeUser = Auth::user();
+
+        if (!CustomerPolicy::view($employeeUser)) {
+            return response()->json(['message' => 'No autorizad@'], 403);
+        }
+
+        // Obtener al empleado directamente usando la relación
+        $employee = $employeeUser->employee;
+
+        if (!$employee) {
+            return response()->json(['message' => 'Empleado no encontrado'], 403);
+        }
+
+        // Comprobar que existe algun Insurance asociado al empleado y al cliente
+        $insuranceExists = Insurance::where('employee_id', $employee->id)
+            ->where('customer_id', $customer->id)
+            ->first();
+
+        if (!$insuranceExists) {
+            return response()->json(['message' => 'No tienes permiso. No es cliente tuyo.'], 403);
+        }
+
+        // Usar relaciones para obtener los seguros del cliente asociados al empleado
+        $insurances = Insurance::where('employee_id', $employee->id)
+            ->where('customer_id', $customer->id)
+            ->get();
+
+        // Obtener las incidencias asociadas a esas pólizas
+        $issues = Issue::whereIn('insurance_id', $insurances->pluck('id'))->get();
+
+        // Formatear la respuesta
+        $response = [
+            'customer' => $customer,
+            'user' => $customer->user->makeHidden(['password']), // Asume que la relación `user` está en el modelo Customer
+            'insurances' => $insurances,
+            'issues' => $issues,
+        ];
+
+        return response()->json($response, 200);
     }
-
-    // Obtener al empleado directamente usando la relación
-    $employee = $employeeUser->employee; // Asume que la relación está definida en el modelo User
-
-    if (!$employee) {
-        return response()->json(['message' => 'Empleado no encontrado'], 404);
-    }
-
-    // Usar relaciones para obtener los seguros del cliente asociados al empleado
-    $insurances = Insurance::where('employee_id', $employee->id)
-        ->where('customer_id', $customer->id)
-        ->get();
-
-    // Obtener las incidencias asociadas a esas pólizas
-    $issues = Issue::whereIn('insurance_id', $insurances->pluck('id'))->get();
-
-    // Formatear la respuesta
-    $response = [
-        'customer' => $customer,
-        'user' => $customer->user->makeHidden(['password']), // Asume que la relación `user` está en el modelo Customer
-        'insurances' => $insurances,
-        'issues' => $issues,
-    ];
-
-    return response()->json($response, 200);
-}
 
 }

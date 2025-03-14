@@ -12,7 +12,7 @@ use \App\Models\Company;
 class EmployeeFactory extends Factory
 {
     /**
-     * Define the model's default state.
+     * Define el estado del modelo.
      *
      * @return array<string, mixed>
      */
