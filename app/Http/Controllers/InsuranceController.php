@@ -202,9 +202,9 @@ class InsuranceController
             return response()->json(['message' => 'No autorizad@'], 403);
         }
 
-        //Comprobar si tiene issues pendientes asociadas.
-        if ($insurance->issues->contains(fn($issue) => $issue->status !== 'Cerrada')) {
-            return response()->json(['message' => 'No se puede eliminar una póliza con incidencias abiertas o pendientes.'], 400);
+        // Comprobar si la póliza tiene incidencias asociadas (sin importar el estado)
+        if ($insurance->issues->isNotEmpty()) {
+            return response()->json(['message' => 'No se puede eliminar una póliza que tenga incidencias asociadas.'], 400);
         }
 
 
