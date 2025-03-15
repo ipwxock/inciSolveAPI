@@ -101,6 +101,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/employees/{employee}', [EmployeeController::class, 'update']);
     Route::get('/employees/{employee}/get-employee-detail', [EmployeeController::class, 'getEmployeeDetail'])
         ->whereNumber('employee');
+    Route::delete('/employees/{employee}', [EmployeeController::class, 'destroy']);
 });
 
 /**

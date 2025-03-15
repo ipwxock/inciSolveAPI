@@ -7,10 +7,8 @@ use App\Models\Employee;
 use App\Http\Policies\EmployeePolicy;
 use App\Models\Insurance;
 use App\Models\Issue;
-use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 use function PHPUnit\Framework\isEmpty;
 
@@ -79,7 +77,7 @@ class EmployeeController
 
 
     /**
-     * Elimina un empleado si el usuario tiene permisos y no tiene seguros asociados.
+     * Elimina un empleado si el usuario tiene permisos y no tiene pólizas asociadas.
      *
      * @param Employee $employee Empleado a eliminar.
      * @return \Illuminate\Http\JsonResponse Mensaje de confirmación o error si no está autorizado o el empleado tiene seguros asociados.
@@ -102,8 +100,11 @@ class EmployeeController
             return response()->json(['message' => 'No se puede eliminar un empleado con seguros asociados.'], 400);
         }
 
-        $employee->delete();
-        return response()->json("Empleado despedido correctamente", 204);
+        $user = User::find($employee->auth_id);
+
+        $user->delete();
+
+        return response()->json(['message' => 'Empleado despedido correctamente'], 200);
     }
 
     /**

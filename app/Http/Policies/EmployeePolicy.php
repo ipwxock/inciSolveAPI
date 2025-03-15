@@ -61,7 +61,7 @@ class EmployeePolicy
      */
     public static function delete(User $user)
     {
-        return in_array($user->role, ['Admin']);
+        return in_array($user->role, ['Admin', 'Manager']);
     }
 
     /**
