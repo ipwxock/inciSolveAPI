@@ -303,7 +303,7 @@ class InsuranceController
 
         $user = Auth::user();
 
-        if (!InsurancePolicy::view($user)) {
+        if (!InsurancePolicy::view($user) || !$this->isMyInsurance($user, $insurance)) {
             return response()->json(['message' => 'No autorizad@'], 403);
         }
 
@@ -325,5 +325,23 @@ class InsuranceController
             ],
             'issues' => $insurance->issues
         ], 200);
+    }
+
+    /**
+     * Verifica si una póliza es del usuario autenticado, basándose en su rol y eld id de la póliza.
+     *
+     * @param \App\Models\User $user El usuario autenticado.
+     * @param \App\Models\Insurance $insurance La póliza a verificar.
+     * @return bool True si la póliza es del usuario, false de lo contrario.
+     */
+    private function isMyInsurance(User $user, Insurance $insurance)
+    {
+        if ($user->role==="Cliente") {
+            return $user->customer->id === $insurance->customer_id;
+        }
+
+        if ($user->role==="Empleado" || $user->role==="Manager") {
+            return $user->employee->id === $insurance->employee_id;
+        }
     }
 }
